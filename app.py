@@ -138,7 +138,6 @@ async def video(update, context):
             await update.message.reply_text(f"📦 Видео {size_mb:.1f} МБ, сжимаю до 720p...")
             compressed = filename.replace('.mp4', '_720p.mp4')
             duration = info.get('duration', 0)
-            # Простое сжатие без прогресса (для Render)
             cmd = [
                 'ffmpeg', '-i', filename,
                 '-vf', 'scale=1280:720',
@@ -172,7 +171,12 @@ def run_bot():
     application.run_polling()
 
 if __name__ == "__main__":
-    bot_thread = threading.Thread(target=run_bot)
-    bot_thread.start()
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    # Запускаем Flask в фоне, чтобы бот работал в основном потоке
+    flask_thread = threading.Thread(
+        target=lambda: app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+    )
+    flask_thread.daemon = True
+    flask_thread.start()
+    
+    # Бот запускается в основном потоке (здесь есть event loop)
+    run_bot()
