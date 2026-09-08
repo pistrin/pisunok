@@ -1,4 +1,4 @@
 python-telegram-bot==21.0.0
 Flask==3.0.0
-yt-dlp==2026.9.7
+yt-dlp==2026.8.19
 openai
