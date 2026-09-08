@@ -103,9 +103,18 @@ async def audio(update, context):
             'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3', 'preferredquality': '192'}],
             'quiet': True,
             'no_warnings': True,
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['android', 'web'],
+                    'skip': ['hls', 'dash'],
+                }
+            },
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
+            if info is None:
+                await update.message.reply_text("❌ Не удалось получить информацию о видео.")
+                return
             base = os.path.splitext(ydl.prepare_filename(info))[0]
             filename = base + '.mp3'
         await context.bot.send_audio(update.effective_chat.id, open(filename, 'rb'), caption="✅ Готово!")
@@ -137,6 +146,9 @@ async def video(update, context):
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
+            if info is None:
+                await update.message.reply_text("❌ Не удалось скачать видео. YouTube блокирует запросы с этого сервера.\nПопробуй позже или используй другое видео.")
+                return
             filename = ydl.prepare_filename(info)
             if not filename.endswith('.mp4'):
                 base = os.path.splitext(filename)[0]
