@@ -4,6 +4,7 @@ import random
 import re
 import time
 import subprocess
+import urllib.request
 from flask import Flask
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
@@ -13,6 +14,7 @@ TOKEN = os.environ.get("TELEGRAM_TOKEN")
 MY_ID = 6624457671
 DOWNLOAD_FOLDER = 'downloads'
 MAX_SIZE_MB = 50
+RENDER_URL = os.environ.get("RENDER_URL", "https://pisunok.onrender.com")  # свой URL
 
 app = Flask(__name__)
 
@@ -143,7 +145,6 @@ async def video(update, context):
         if size_mb > MAX_SIZE_MB:
             await update.message.reply_text(f"📦 Видео {size_mb:.1f} МБ, сжимаю до 720p...")
             compressed = filename.replace('.mp4', '_720p.mp4')
-            duration = info.get('duration', 0)
             cmd = [
                 'ffmpeg', '-i', filename,
                 '-vf', 'scale=1280:720',
@@ -176,13 +177,37 @@ def run_bot():
     print("бот запущен 🦞")
     application.run_polling()
 
+# ====== ПИНГ ДЛЯ ПОДДЕРЖАНИЯ АКТИВНОСТИ ======
+def ping_self():
+    while True:
+        try:
+            time.sleep(840)  # каждые 14 минут
+            urllib.request.urlopen(RENDER_URL + "/health", timeout=5)
+            print("pong")
+        except Exception as e:
+            print(f"ошибка пинга: {e}")
+
+# ====== FLASK ======
+@app.route('/')
+def home():
+    return "Бот жив 🦞"
+
+@app.route('/health')
+def health():
+    return "OK", 200
+
 if __name__ == "__main__":
-    # Запускаем Flask в фоне, чтобы бот работал в основном потоке
+    # Запускаем пинг в фоне
+    ping_thread = threading.Thread(target=ping_self)
+    ping_thread.daemon = True
+    ping_thread.start()
+
+    # Flask в фоне
     flask_thread = threading.Thread(
         target=lambda: app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
     )
     flask_thread.daemon = True
     flask_thread.start()
-    
-    # Бот запускается в основном потоке (здесь есть event loop)
+
+    # Бот в основном потоке
     run_bot()
